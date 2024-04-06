@@ -1,0 +1,358 @@
+---
+title: "MATH 9102 - Probability and Statistical Inference Assignment - 3"
+author: "Antonio Silva (D23129331@mytudublin.ie)"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+  pdf_document:
+    toc: true
+    toc_depth: '2'
+---
+
+```{r, echo = FALSE, results = "hide"}
+if (!require('knitr',quietly = TRUE)) {
+  install.packages('knitr', repos = 'http://cran.us.r-project.org')
+}
+
+if (!require('ggplot2', quietly = TRUE)) {
+  install.packages('knitr', repos = 'http://cran.us.r-project.org')
+}
+
+if (!require('factoextra', quietly = TRUE)) {
+  install.packages('factoextra', repos = 'http://cran.us.r-project.org')
+}
+
+if (!require('psych', quietly = TRUE, warn.conflicts = FALSE)) {
+  install.packages('psych', repos = 'http://cran.us.r-project.org')
+}
+
+if (!require('corrplot', quietly = TRUE, warn.conflicts = FALSE)) {
+  install.packages('corrplot', repos = 'http://cran.us.r-project.org')
+}
+
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(psych)
+library(corrplot)
+```
+
+
+# Question 1 - PCA
+a) What do eigenvectors of the covariance matrix gives us? [1 mark]
+b) When can we decide to compress the data in PCA process? Explain the effects
+if any. [1 mark]
+c) Read the glass identification data provided. Apply PCA algorithm to
+reduce the dimensions. Analyze your findings. [2.5 marks]
+
+Reading the glass dataset: Save the read dataset in a variable called "glass". Do not change the variable name.
+For example `glass <- read.csv("glassidentificarion.csv")`
+
+## Answer
+### a
+The eigenvectors of a covariance matrix indicate the directions in which the data varies the most. We examine how the variables correlate or vary with each other in an iterative process, moving in orthogonal directions at each step.
+
+The first eigenvector represents the direction with the greatest variance. The second iteration identifies the direction with the greatest variance that is also perpendicular to the first vector. The third finds the greatest variance perpendicular to the first two, and so on.
+
+Because the first iteration captures the most significant direction of variance, each subsequent iteration will capture a smaller portion of the dataset's variance (and its representation).
+
+### b
+The primary goal of PCA is to reduce the dimensionality of a dataset while 
+retaining as much variance as possible. It is effective only with numerical variables.
+
+The main factors influencing the decision to use PCA include:
+
+- High Dimensionality: Managing a dataset with a large number of variables;
+- Duplicate information: The presence of variables that are correlated or redundant;
+- Interpretability: If you're fine with your data being a bit less clear to
+understand because it's been simplified.
+
+The effects of PCA include:
+Data Simplification: Reducing the number of variables makes analysis, computation, and visualization easier;
+
+- Pattern and Cluster Identification: PCA can reveal patterns and clusters that are difficult to discern in higher-dimensional spaces;
+- Information Loss: Some information from the original data may be lost due to the reduction in dimensionality;
+- Interpretability: Simplified data might not be as easy to describe because it combines many variables into new fewer ones with a different meaning.
+
+### c
+
+The first step is loading the dataset and take a look at the dataset to 
+identify outliers and see descriptive analysis.
+Load the dataset.
+```{r, echo = TRUE}
+glass <- read.csv("glassidentification.csv")
+```
+
+Look at the first rows to see the structure.
+```{r, echo = TRUE}
+head(glass)
+```
+
+Begin by examining basic descriptive statistics for the dataset.
+```{r, echo=TRUE}
+summary(glass)
+```
+
+
+So we can observe the the following:
+
+- *Ri* its goes from 1511 to 1543 so its a narrow concentration of values;
+- *Na* and *Ca* are quite spread.
+- *Ba* and *Ca* have the median of 0 meaning that are absent from some glass types.
+- *T* is a number probably meaning the glass type.
+- *X* and *id* look two sequential numbers not adding anything valuable.
+
+So even with the *Ba* and *Ca* being mostly 0 but they are quite narrow so 
+we don't have bit outliers here.
+
+I believe that data normalization will address these specifics, so we will not need to discard any variables or perform cleaning. 
+We don't find and big outliers so we don't need to remove data.
+
+In terms of feature removal we will remove the variables *T*, *id* and *X*
+because these are identifiers and non features.
+
+```{r, echo=TRUE}
+glass_ft <- glass[, !(names(glass) %in% c("X", "id", "T"))] 
+```
+
+Need to ensure there are no missing values in the dataset.
+```{r, echo=TRUE}
+sum(is.na(glass_ft))
+```
+
+In the previous dataset we don't have missing values.
+
+Next step is to create a correlation matrix to interpret the relations
+between the data.
+
+```{r, echo=TRUE}
+cor_matrix <- cor(glass_ft)
+cor_matrix
+```
+
+Filtering the strong correlation only.
+```{r, echo=TRUE}
+high_cor <- which(abs(cor_matrix) > 0.3 & cor_matrix < 1, arr.ind = TRUE)
+cor_matrix[high_cor]
+```
+We can conclude:
+*RI* and *CA* have a strong positive correlation;
+*Mg and *Al* are negative correlately.
+
+Now we will run the PCA to reduce the data dimensionality
+
+```{r, echo=TRUE}
+pca <- prcomp(glass_ft, center = TRUE, scale. = TRUE)
+```
+
+We can look at the summary of the PCA result to understand the proportion of variance explained by each principal component:
+
+```{r, echo=TRUE}
+summary(pca)
+```
+```{r, echo=TRUE}
+eig.val <- get_eigenvalue(pca)
+eig.val
+```
+
+```{r, echo=TRUE, dev='png'}
+fviz_eig(pca, addlabels = TRUE)
+```
+
+The first four dimensions of our pca are really important because they are bigger than 1. The fifth part is almost 1 (it's 0.91), so we'll include it too.
+
+Together, these five dimensions make up almost *90%* of variance represented of 
+our dataset.
+
+Lets see now the most contributing variables per dimension.
+```{r, echo=TRUE, dev='png'}
+vars = get_pca_var(pca)
+corrplot(vars$cos2)
+```
+
+```{r, echo=TRUE, dev='png'}
+fviz_cos2(pca, choice = "var", axes=1:5)
+```
+
+```{r, echo=TRUE, dev='png'}
+fviz_pca_var(pca, col.var = "cos2", gradient.cols = c("red", "blue", "green"), 
+             repel = TRUE)
+```
+
+So for the first fifth dimensions of the PCA the most contributing variables
+are:
+
+- CA;
+- Si;
+- Fe;
+- Ri;
+- Mg.
+
+# Question 2 - Difference
+a) Are there any differences between patients having different chest pain
+to the angiographic disease status? Report your findings. [Hint:
+Consider variables ChestPain and AHD][2.5 marks]
+
+b) Is there any difference between cholesterol level and angiographic 
+disease status? Report your findings. 
+[Hint: Consider variables Chol and AHD] [2.5 marks]
+
+Reading the heartdisease dataset for Q1. and Q2: Save the read dataset in a variable called “heartdisease”. Do not change the variable name.
+For example: `heartdisease <- read.csv("heartdisease.csv")`.
+
+c) Are there any differences between the free sulfur dioxide and quality of 
+the wine? Report your findings. 
+[Hint: Consider variables free sulfur dioxide and quality] [2.5 marks]
+
+Reading the winequality dataset: Save the read dataset in a variable 
+called “wine”. Do not change the variable name.
+For example: `wine <- read.csv("winequality-red.csv")`.
+
+## Answer
+
+### a
+First we need to load the dataset
+```{r, echo=TRUE}
+heartdisease <- read.csv("heartdisease.csv")
+head(heartdisease)
+```
+
+Analysing the dataset
+```{r, echo=TRUE}
+summary(heartdisease)
+```
+
+Check if is there is empty values.
+```{r, echo=TRUE}
+sum(is.na(c(heartdisease$ChestPain, heartdisease$AHD)))
+```
+
+So we have two categorical with no empty values. The most suitable test in this
+scenario is a Chi-square test of independence.
+
+For the test we have the following Hypothesis: 
+* Null hypothesis: There is no association between ChestPain and AHD;
+* Alternative hypothesis: There is association between ChestPain and AHD;
+
+We will assume significance level of 5%. 
+
+$$
+\begin{cases}
+        H_0: ChestPain \perp AHD \\
+        H_a: ChestPain \not\perp AHD
+    \end{cases} 
+$$
+
+$$\alpha = 0.05$$
+
+First we create a contigency table. 
+```{r, echo=TRUE}
+ct.chestpain_ahd <- table(heartdisease$ChestPain, heartdisease$AHD)
+ct.chestpain_ahd
+```
+We can see that we have 3 degrees of freedom.
+
+```{r, echo=TRUE}
+chisq.test(ct.chestpain_ahd)
+```
+The p-value is less than the significance level of 0.05. So we can reject the
+null hypotesys ($H_0$) and we conclude that:
+
+There is an *association* between the type of *ChestPain* and *AHD*.
+
+### b
+Because *cholesterol* is a continuous variable, it will be useful to know
+if it distributes normally across the AHD values (*categorical variable*).
+
+```{r, echo=TRUE}
+shapiro.test.chol_ahd_yes <- shapiro.test(heartdisease$Chol[heartdisease$AHD == "Yes"])
+shapiro.test.chol_ahd_no <- shapiro.test(heartdisease$Chol[heartdisease$AHD == "No"])
+print(shapiro.test.chol_ahd_yes)
+print(shapiro.test.chol_ahd_no)
+```
+We can conclude that cholesterol (*Chol*) does not follow a normal distribution
+for the angiographic disease status (*ADH*).
+
+So because of that we will use the Mann-Whitney U test.
+
+For the test we have the following Hypothesis: 
+
+- Null hypothesis ($H_0$): There is no difference in Chol between AHD = "Yes" and AHD = "No";
+- Alternative hypothesis ($H_a$): There is a difference in Chol between AHD = "Yes" and AHD = "No".
+
+We will assume significance level of 5% ($\alpha = 0.05$). 
+
+```{r, echo = TRUE}
+wilcox.test(Chol ~ AHD, data = heartdisease)
+```
+Since the p-value is less than 0.05 (significance level), we can reject the 
+null hypothesis. 
+So we can can conclude that there is statistically significant difference 
+between the distribution of Chol levels between patients with
+and without AHD.
+
+### c
+
+First we need to load the dataset and run the descriptive statistics.
+
+```{r, echo = TRUE}
+wine <- read.csv("winequality-red.csv")
+head(wine)
+```
+
+```{r, echo=TRUE}
+summary(wine)
+```
+```{r, echo=TRUE}
+unique(wine$quality)
+```
+
+`free_sulfur_dioxide` is a continuous variable spread and skewed. 
+`quality` is an ordinal variable.
+
+We also don't have empty values for these variables.
+```{r, echo=TRUE}
+sum(is.na(c(wine$quality, wine$free_sulfur_dioxide)))
+```
+
+The next step is to verify if the data is uniform distributed across que 
+quality values.
+
+```{r, echo=TRUE}
+shaptest_freesulfurdioxide_by_quality <- function(quality) {
+  print(quality)
+  shapiro.test(wine$free_sulfur_dioxide[wine$quality == quality])
+}
+
+lapply(unique(wine$quality), shaptest_freesulfurdioxide_by_quality)
+```
+
+By the results we can see that *free sulfur dioxide* does not follow a 
+normal distribution across the *quality* of the wine.
+
+So because the *quality* is a ordinal variable we will use the 
+Spearman's Rank Correlation test.
+
+So we have the follow Hypothesis:
+
+- Null Hypothesis ($H_0$): There is no monotonic association between free sulfur dioxide levels and wine quality;
+- Alternative Hypotesis ($H_a$): There is monotonic association between free sulfur dioxide levels and wine quality.
+
+$$
+\begin{cases}
+        H_0: \rho_s = 0 \\
+        H_a: \rho_s \neq 0
+    \end{cases} 
+$$
+
+As usual we will assume significance level of 5% ($\alpha = 0.05$). 
+
+```{r, echo=TRUE}
+cor.test(wine$free_sulfur_dioxide, wine$quality, method = "spearman", exact=FALSE)
+```
+So based on the result we *reject the null hypothesis* for a confidence level
+of 0.05. The data indicate a slight inverse relationship (negative and near 0), 
+suggesting that *wine quality slightly improves* as *free sulfur dioxide levels decrease*.
+
