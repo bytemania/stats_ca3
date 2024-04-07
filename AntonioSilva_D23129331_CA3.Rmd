@@ -356,3 +356,136 @@ So based on the result we *reject the null hypothesis* for a confidence level
 of 0.05. The data indicate a slight inverse relationship (negative and near 0), 
 suggesting that *wine quality slightly improves* as *free sulfur dioxide levels decrease*.
 
+# Question 3 - Predictive Statistics
+
+a) Model the relationship between humidity and total rented bikes. How
+good is the model? 
+[Hint: Consider the variables hum and cnt][1.5 marks]
+
+b) Include a dummy variable (working day) to the model and compare the
+relationship. Report your findings. [1.5 marks]
+
+Reading the bikesharing dataset: Save the read dataset in a variable called 
+"bike". Do not change the variable name.
+For example: `bike <- read.csv("bikesharing.csv")`
+
+## Answer
+
+### a
+
+First we need to load the dataset and look at data.
+
+```{r, echo=TRUE}
+bike <- read.csv("bikesharing.csv")
+head(bike)
+```
+
+```{r, echo=TRUE} 
+summary(bike)
+```
+```{r, echo=TRUE} 
+sum(is.na(c(bike$hum, bike$cnt)))
+```
+
+So we don't have empty values for *hum* and *cnt*.
+
+Regarding the variables *hum* (representing humidity)  has a range between 0 and 0.9725 with a mean
+of 0.6267. We have a negative skew data towards to humidity.
+
+*cnt* (Represent the number of rented bikes) has a range between 22 and 8714. Its shows
+a spread data but the mean and median are close to each other suggesting that 
+the distribution is symmetric.
+
+Using the linear regression we have the following hypothesis:
+
+ - Null ($H_0$) : There is no linear relationship between hum and cnt;
+ - Alternative ($H_a$): There is linear relationship between hum and cnt.
+ 
+$$
+\begin{cases}
+        H_0: \beta_{hum} = 0 \\
+        H_a: \beta_{hum} \neq 0
+    \end{cases} 
+$$
+Our model is a linear equation:
+$$
+cnt = \beta_0 + \beta_{hum}hum + \epsilon
+$$
+Where:
+
+- cnt (number of bikes rented) is the *dependent variable*;
+- $\beta_0$ is *intercept* of the regression line;
+- $\beta_{hum}$ is the *slope* of the regression. It quantifies the change in cnt for one unit in hum;
+- hum (hum) is the *independent variable*;
+- $\epsilon$ the *residual*. The difference between the observed values and values predicted by the model.
+
+
+```{r, echo=TRUE, dev='png'} 
+ggplot(bike, aes(x = hum, y = cnt)) + geom_point() + geom_smooth(method = lm, formula = y ~ x)
+```
+
+Doing the scatterplot we don't find a great evidence that humidity will influence 
+the number of bike rentals.
+Lets run the linear regression model.
+```{r, echo=TRUE, dev='png'} 
+model <- lm(cnt ~ hum, data = bike)
+summary(model)
+```
+
+Looking at the results we to the R-squared values, they are quite low
+suggesting that approximately 0.8% (Adjusted R-squared:  0.008774) of the variance
+contribute for the number of bike rentals.
+
+Because the F-Statistics is a bigger number than 2.5 (with p value of 0.006454)
+(https://www.sciencedirect.com/topics/mathematics/f-test)
+we can reject the null hypothesis (for a significance level of 0.01). 
+
+Our linear model equation is the following one:
+$$
+cnt=5364.0 − 1369.1 \times hum + \epsilon
+$$
+
+We conclude that: *There is a negative relationship between humidity (hum) and 
+the number of the rented bikes (cnt) but is very low (R-Squared)*.
+
+### b
+
+Adding the working day variable we will end up in *multiple linear regression
+model* with the following expanded equation:
+$$
+cnt = \beta_0 + \beta_{hum}hum + \beta_{workingday}workingday + \epsilon
+$$
+
+For the test we have one null and one alternative hypothesis per variable.
+$$
+\begin{cases}
+        H_0: \beta_{hum} = 0 \\
+        H_a: \beta_{hum} \neq 0
+\end{cases}\\
+\begin{cases}
+        H_0: \beta_{workingday} = 0 \\
+        H_a: \beta_{workingday} \neq 0
+\end{cases}\\
+$$
+Lets run the linear regression model.
+```{r, echo=TRUE, dev='png'} 
+mmodel <- lm(cnt ~ hum + workingday, data = bike)
+summary(mmodel)
+```
+
+$$
+cnt = 5195.9 - 1390.1 \times hum + 265.0 \times workingday + \epsilon
+$$
+
+The model estimates an increase of 265 bikes rented on working days compared 
+to non-working days. However, due to the p-value being higher than the 0.05 
+significance level, this variable is not considered statistically significant
+and does not provide strong evidence of affecting bike rentals.
+
+Although the F-statistic for the model is 5.2, suggesting significance at a 
+global level, it shows a decrease in significance compared to the previous model
+(7.4) that included only humidity (hum). 
+
+When analyzing the R-squared values, we observe that the model explains a 
+minimal portion of the variability in the number of bikes rented, indicating 
+its limited explanatory power.
